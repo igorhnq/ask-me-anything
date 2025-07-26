@@ -279,7 +279,61 @@ func (h apiHandler) handleGetRooms(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(data)
 }
-func (h apiHandler) handleGetRoomMessages(w http.ResponseWriter, r *http.Request)           {}
+
+func (h apiHandler) handleGetRoomMessages(w http.ResponseWriter, r *http.Request) {
+	rawRoomID := chi.URLParam(r, "roomId")
+	roomID, err := uuid.Parse(rawRoomID)
+	if err != nil {
+		http.Error(w, "invalid room id", http.StatusBadRequest)
+		return
+	}
+
+	_, err = h.q.GetRoom(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "room not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	messages, err := h.q.GetRoomMessages(r.Context(), roomID)
+	if err != nil {
+		slog.Error("failed to get room messages", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	type response struct {
+		ID            string `json:"id"`
+		RoomID        string `json:"room_id"`
+		Message       string `json:"message"`
+		ReactionCount int64  `json:"reaction_count"`
+		Answered      bool   `json:"answered"`
+	}
+
+	var responseMessages []response
+	for _, message := range messages {
+		responseMessages = append(responseMessages, response{
+			ID:            message.ID.String(),
+			RoomID:        message.RoomID.String(),
+			Message:       message.Message,
+			ReactionCount: message.ReactionCount,
+			Answered:      message.Answered,
+		})
+	}
+
+	data, err := json.Marshal(responseMessages)
+	if err != nil {
+		slog.Error("failed to marshal response", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(data)
+}
 func (h apiHandler) handleGetRoomMessage(w http.ResponseWriter, r *http.Request)            {}
 func (h apiHandler) handleReactToMessage(w http.ResponseWriter, r *http.Request)            {}
 func (h apiHandler) handleRemoveReactionFromMessage(w http.ResponseWriter, r *http.Request) {}
