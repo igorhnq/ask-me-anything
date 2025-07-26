@@ -248,7 +248,37 @@ func (h apiHandler) handleCreateRoomMessage(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-func (h apiHandler) handleGetRooms(w http.ResponseWriter, r *http.Request)                  {}
+func (h apiHandler) handleGetRooms(w http.ResponseWriter, r *http.Request) {
+	rooms, err := h.q.GetRooms(r.Context())
+	if err != nil {
+		slog.Error("failed to get rooms", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	type response struct {
+		ID    string `json:"id"`
+		Theme string `json:"theme"`
+	}
+
+	var responseRooms []response
+	for _, room := range rooms {
+		responseRooms = append(responseRooms, response{
+			ID:    room.ID.String(),
+			Theme: room.Theme,
+		})
+	}
+
+	data, err := json.Marshal(responseRooms)
+	if err != nil {
+		slog.Error("failed to marshal response", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(data)
+}
 func (h apiHandler) handleGetRoomMessages(w http.ResponseWriter, r *http.Request)           {}
 func (h apiHandler) handleGetRoomMessage(w http.ResponseWriter, r *http.Request)            {}
 func (h apiHandler) handleReactToMessage(w http.ResponseWriter, r *http.Request)            {}
