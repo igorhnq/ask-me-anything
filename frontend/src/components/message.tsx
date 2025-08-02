@@ -1,17 +1,51 @@
 import { useState } from "react";
 import { ArrowUp } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { createMessageReaction } from "../http/create-message-reaction";
+import { toast } from "sonner";
+import { removeMessageReaction } from "../http/remove-message-reaction";
 
 interface MessageProps {
+    id: string
     text: string
     amoutOfReactions: number
     answered?: boolean
 }
 
-export function Message({ text, amoutOfReactions, answered = false }: MessageProps) {
+export function Message({ id: messageId, text, amoutOfReactions, answered = false }: MessageProps) {
+    const { roomId } = useParams()
     const [hasReacted, setHasReacted] = useState(false)
 
-    function handleReactToMessage() {
+    if (!roomId) {
+        throw new Error('Messages components must be used within room page')
+    }
+
+    async function createMessageReactionAction() {
+        if (!roomId) {
+            return
+        }
+
+        try {
+            await createMessageReaction({ messageId, roomId})
+        } catch {
+            toast("Falha ao curtir mensagem, tente novamente!")
+        }
+        
         setHasReacted(true)
+    }
+
+    async function removeMessageReactionAction() {
+        if (!roomId) {
+            return
+        }
+
+        try {
+            await removeMessageReaction({ messageId, roomId })
+        } catch {
+            toast("Falha ao remover curtida, tente novamente!")
+        }
+
+        setHasReacted(false)
     }
 
     return (
@@ -21,6 +55,7 @@ export function Message({ text, amoutOfReactions, answered = false }: MessagePro
                 <button 
                     type="button" 
                     className="mt-3 flex items-center gap-2 text-orange-400 text-sm font-medium hover:text-orange-500 cursor-pointer"
+                    onClick={removeMessageReactionAction}
                 >
                     <ArrowUp className="size-4" />
                     Curtir pergunta ({amoutOfReactions})
@@ -29,7 +64,7 @@ export function Message({ text, amoutOfReactions, answered = false }: MessagePro
                 <button 
                     type="button" 
                     className="mt-3 flex items-center gap-2 text-zinc-400 text-sm font-medium hover:text-zinc-300 cursor-pointer"
-                    onClick={handleReactToMessage}
+                    onClick={createMessageReactionAction}
                 >
                     <ArrowUp className="size-4" />
                     Curtir pergunta ({amoutOfReactions})
