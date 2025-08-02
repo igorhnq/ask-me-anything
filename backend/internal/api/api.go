@@ -463,6 +463,15 @@ func (h apiHandler) handleReactToMessage(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(data)
+
+	go h.notifyClients(Message{
+		Kind:   "message_reaction_increased",
+		RoomID: rawRoomID,
+		Value: map[string]interface{}{
+			"id":    messageID.String(),
+			"count": reactionCount,
+		},
+	})
 }
 func (h apiHandler) handleRemoveReactionFromMessage(w http.ResponseWriter, r *http.Request) {
 	rawRoomID := chi.URLParam(r, "roomId")
@@ -525,6 +534,15 @@ func (h apiHandler) handleRemoveReactionFromMessage(w http.ResponseWriter, r *ht
 
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(data)
+
+	go h.notifyClients(Message{
+		Kind:   "message_reaction_decreased",
+		RoomID: rawRoomID,
+		Value: map[string]interface{}{
+			"id":    messageID.String(),
+			"count": reactionCount,
+		},
+	})
 }
 func (h apiHandler) handleMarkMessageAsAnswered(w http.ResponseWriter, r *http.Request) {
 	rawRoomID := chi.URLParam(r, "roomId")
